@@ -4,9 +4,10 @@ declare global {
 	namespace App {
 		// can customize this to be whatever u want
 		interface Error {
-			message: string;
-			timestamp: number;
-			traceId?: string;
+			readonly message: string;
+			readonly kind: string;
+			readonly timestamp: number;
+			readonly traceId: string;
 		}
 		// interface Locals {}
 		// interface PageData {}

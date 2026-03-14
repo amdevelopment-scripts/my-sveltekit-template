@@ -1,14 +1,26 @@
+import { randomUUID } from 'node:crypto';
 import { CONVEX_API_KEY } from '$env/static/private';
 import { ConvexHttpClient } from 'convex/browser';
 import { Data, Layer, ServiceMap } from 'effect';
 import * as Effect from 'effect/Effect';
 import { CONVEX_URL } from './convex-env';
-import type { DefaultFunctionArgs, FunctionReference } from 'convex/server';
-import type { ArgsAndOptions, OptionalRestArgs } from 'convex/server';
+import {
+	getFunctionName,
+	type ArgsAndOptions,
+	type DefaultFunctionArgs,
+	type FunctionReference,
+	type OptionalRestArgs
+} from 'convex/server';
 
-class ConvexError extends Data.TaggedError('ConvexError')<{
+export class ConvexError extends Data.TaggedError('ConvexError')<{
 	readonly message: string;
+	readonly kind: string;
+	readonly traceId: string;
+	readonly timestamp: number;
+	readonly operation: 'query' | 'mutation' | 'action';
+	readonly functionName: string;
 	readonly componentPath?: string;
+	readonly cause?: unknown;
 }> {}
 
 type PrivateQueryRunner = <
@@ -55,14 +67,36 @@ export class ConvexPrivateService extends ServiceMap.Service<ConvexPrivateServic
 			const withApiKey = <Args extends DefaultFunctionArgs>(args: Omit<Args, 'apiKey'>) =>
 				({ ...args, apiKey: CONVEX_API_KEY }) as unknown as Args;
 
+			const createConvexError = <
+				Type extends 'query' | 'mutation' | 'action',
+				Args extends DefaultFunctionArgs,
+				Result,
+				ComponentPath extends string | undefined
+			>({
+				operation,
+				func,
+				error
+			}: {
+				operation: Type;
+				func: FunctionReference<Type, 'public', Args, Result, ComponentPath>;
+				error: unknown;
+			}) =>
+				new ConvexError({
+					message: error instanceof Error ? error.message : String(error),
+					kind: `convex_${operation}_error`,
+					traceId: randomUUID(),
+					timestamp: Date.now(),
+					operation,
+					functionName: getFunctionName(func),
+					componentPath: func._componentPath,
+					cause: error
+				});
+
 			const query: PrivateQueryRunner = ({ func, args }) =>
 				Effect.tryPromise({
 					try: () =>
 						convex.query(func, ...([withApiKey(args)] as unknown as OptionalRestArgs<typeof func>)),
-					catch: (error) =>
-						new ConvexError({
-							message: error instanceof Error ? error.message : String(error)
-						})
+					catch: (error) => createConvexError({ operation: 'query', func, error })
 				});
 
 			const mutation: PrivateMutationRunner = ({ func, args }) =>
@@ -75,10 +109,7 @@ export class ConvexPrivateService extends ServiceMap.Service<ConvexPrivateServic
 								{ skipQueue: boolean }
 							>)
 						),
-					catch: (error) =>
-						new ConvexError({
-							message: error instanceof Error ? error.message : String(error)
-						})
+					catch: (error) => createConvexError({ operation: 'mutation', func, error })
 				});
 
 			const action: PrivateActionRunner = ({ func, args }) =>
@@ -88,10 +119,7 @@ export class ConvexPrivateService extends ServiceMap.Service<ConvexPrivateServic
 							func,
 							...([withApiKey(args)] as unknown as OptionalRestArgs<typeof func>)
 						),
-					catch: (error) =>
-						new ConvexError({
-							message: error instanceof Error ? error.message : String(error)
-						})
+					catch: (error) => createConvexError({ operation: 'action', func, error })
 				});
 
 			return {
