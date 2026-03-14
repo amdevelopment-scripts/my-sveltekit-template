@@ -18,7 +18,7 @@ const getEnvValue = (loadedEnv: Record<string, string>, key: string) =>
 
 // update this to include all the env vars needed for the convex backend
 const LOCAL_CONVEX_ENV_KEYS = [
-	'CONVEX_API_KEY',
+	'CONVEX_PRIVATE_BRIDGE_KEY',
 	'CLERK_SECRET_KEY',
 	'CLERK_JWT_ISSUER_DOMAIN'
 ] as const;

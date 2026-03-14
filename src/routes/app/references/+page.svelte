@@ -202,8 +202,8 @@
 						The private Convex function validates <code class="rounded bg-stone-100 px-1 py-0.5"
 							>apiKey</code
 						>
-						against <code class="rounded bg-stone-100 px-1 py-0.5">CONVEX_API_KEY</code> env var &mdash;
-						never exposed to the client.
+						against <code class="rounded bg-stone-100 px-1 py-0.5">CONVEX_PRIVATE_BRIDGE_KEY</code> env
+						var &mdash; never exposed to the client.
 					</p>
 					<p>
 						Errors are caught by <code class="rounded bg-stone-100 px-1 py-0.5">effectRunner</code>
